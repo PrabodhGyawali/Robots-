@@ -7,7 +7,8 @@ Will add photos of completed builds when I get there.
 
 ## [Gripper Robot Arm](https://www.youtube.com/watch?v=WUIGY8ZHef8)
 - [x] Solidworks Design 
-- [ ] Build and assembly
-- [ ] Arduino Code to operate
+- [X] Build and assembly
+- [ ] ESP IDF operate all actuators basics
+- [ ] URDF for Simulation
 
  
