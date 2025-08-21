@@ -1,0 +1,12 @@
+build/
+.vscode/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+managed_components/
+*.o
+.pyc
+.idea/
+cmake-build-/
+.DS_Store
+*~

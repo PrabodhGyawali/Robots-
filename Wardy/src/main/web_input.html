@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Control Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">2 DOF Robot Control</h1>
+        <div class="grid grid-cols-3 gap-2">
+            <div></div>
+            <button id="w-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('w')" onmouseup="resetButtonColor('w-btn')"
+                ontouchstart="sendCommand('w')" ontouchend="resetButtonColor('w-btn')">W</button>
+            <div></div>
+            <button id="a-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('a')" onmouseup="resetButtonColor('a-btn')"
+                ontouchstart="sendCommand('a')" ontouchend="resetButtonColor('a-btn')">A</button>
+            <button id="s-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('s')" onmouseup="resetButtonColor('s-btn')"
+                ontouchstart="sendCommand('s')" ontouchend="resetButtonColor('s-btn')">S</button>
+            <button id="d-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('d')" onmouseup="resetButtonColor('d-btn')"
+                ontouchstart="sendCommand('d')" ontouchend="resetButtonColor('d-btn')">D</button>
+            <button id="o-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('o')" onmouseup="resetButtonColor('o-btn')"
+                ontouchstart="sendCommand('o')" ontouchend="resetButtonColor('o-btn')">O</button>
+            <button id="c-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('c')" onmouseup="resetButtonColor('c-btn')"
+                ontouchstart="sendCommand('c')" ontouchend="resetButtonColor('c-btn')">C</button>
+            <button id="q-btn" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                onmousedown="sendCommand('q')" onmouseup="resetButtonColor('q-btn')"
+                ontouchstart="sendCommand('q')" ontouchend="resetButtonColor('q-btn')">Q</button>
+        </div>
+        <button id="connect-btn" class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+            onclick="connectSerial()">Connect to Serial</button>
+        <p id="status" class="mt-2 text-center text-gray-600"></p>
+    </div>
+
+    <script>
+        let port;
+        let writer;
+
+        async function connectSerial() {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                writer = port.writable.getWriter();
+                document.getElementById('connect-btn').classList.add('bg-green-500', 'hover:bg-green-700');
+                document.getElementById('connect-btn').textContent = 'Connected';
+                document.getElementById('status').textContent = 'Connected to ESP32';
+            } catch (err) {
+                document.getElementById('status').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        async function sendCommand(command) {
+            if (writer) {
+                const data = new TextEncoder().encode(command);
+                await writer.write(data);
+                document.getElementById(`${command}-btn`).classList.remove('bg-gray-300');
+                document.getElementById(`${command}-btn`).classList.add('bg-green-500');
+            } else {
+                document.getElementById('status').textContent = 'Error: Not connected';
+            }
+        }
+
+        function resetButtonColor(buttonId) {
+            document.getElementById(buttonId).classList.remove('bg-green-500');
+            document.getElementById(buttonId).classList.add('bg-gray-300');
+        }
+    </script>
+</body>
+</html>
