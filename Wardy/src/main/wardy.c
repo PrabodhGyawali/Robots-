@@ -21,7 +21,6 @@
 #define TEST_DELAY_MED_MS       1000U
 #define TEST_DELAY_LONG_MS      2000U
 #define STATUS_SEND_INTERVAL_MS 5000U
-#define STATUS_SEND_COUNTER     (STATUS_SEND_INTERVAL_MS / TASK_DELAY_MS)
 
 static uint32_t base_duty = (BASE_DUTY_MIN + BASE_DUTY_MAX) / 2U;
 static uint32_t link_duty = (LINK_DUTY_MIN + LINK_DUTY_MAX) / 2U;
@@ -52,9 +51,9 @@ static void configure_ledc_channel(ledc_channel_t channel, gpio_num_t gpio) {
 
 static void configure_uart(void) {
     const uart_port_t uart_num = UART_NUM_2;
-    const int uart_buffer_size = (UART_RX_BUFFER_SIZE * 2);
+    const int uart_buffer_size = UART_RX_BUFFER_SIZE * 2;
     QueueHandle_t uart_queue;
-    ESP_ERROR_CHECK(uart_driver_install(uart_num, uart_buffer_size, uart_buffer_size, UART_QUEUE_SIZE, &uart_queue, 0));
+    ESP_ERROR_CHECK(uart_driver_install(uart_num, uart_buffer_size, 0, UART_QUEUE_SIZE, &uart_queue, 0));
 
     uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -66,9 +65,11 @@ static void configure_uart(void) {
     };
     ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(uart_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_loop_back(uart_num, false)); // enable for loopback testing
 }
 
 void setup(void) {
+    esp_log_level_set("*", ESP_LOG_INFO); 
     configure_ledc_timer();
     configure_ledc_channel(LEDC_CHANNEL_0, GPIO_NUM_16);    // Gripper
     configure_ledc_channel(LEDC_CHANNEL_1, GPIO_NUM_14);    // Link
@@ -111,14 +112,14 @@ void led_blink() {
     }
 }
 
-// static void send_status(void) {
-//     char buffer[128];
-//     const char *gripper_str = (gripper_duty == GRIPPER_DUTY_OPEN) ? "Open" : "Closed";
-//     int len = snprintf(buffer, sizeof(buffer), "Base: %lu, Link: %lu, Gripper: %s\n", base_duty, link_duty, gripper_str);
-//     if (len > 0) {
-//         uart_write_bytes(UART_NUM_2, buffer, (size_t)len);
-//     }
-// }
+static void send_status(void) {
+    char buffer[128];
+    const char *gripper_str = (gripper_duty == GRIPPER_DUTY_OPEN) ? "Open" : "Closed";
+    int len = snprintf(buffer, sizeof(buffer), "Base: %lu, Link: %lu, Gripper: %s\n", base_duty, link_duty, gripper_str);
+    if (len > 0) {
+        uart_write_bytes(UART_NUM_2, buffer, (size_t)len);
+    }
+}
 
 void test() {
     // Set default duty cycles
@@ -140,6 +141,23 @@ void test() {
     led_blink();
 }
 
+/**
+ * below to test loopback
+ */
+void alternate_gripper_task(void *pvParameters) {
+    const uart_port_t uart_num = UART_NUM_2;
+    const char open_command[] = "o\n";
+    const char close_command[] = "c\n";
+
+    while (1) {
+        uart_write_bytes(uart_num, open_command, sizeof(open_command) - 1);
+        vTaskDelay(STATUS_SEND_INTERVAL_MS / portTICK_PERIOD_MS);
+        uart_write_bytes(uart_num, close_command, sizeof(close_command) - 1);
+        vTaskDelay(STATUS_SEND_INTERVAL_MS / portTICK_PERIOD_MS);
+        ESP_LOGI("BREAK", "Reached ln 154");
+    }
+}
+
 void app_main(void)
 {
     setup();
@@ -152,11 +170,11 @@ void app_main(void)
     // Read data from UART
     const uart_port_t uart_num = UART_NUM_2;
     uint8_t rx_buffer[128];
-    uint32_t send_counter = 0U;
-
-    
+    // ESP_LOGI("BREAK", "Reached ln 169");
+    // xTaskCreate(alternate_gripper_task, "AlternateGripperTask", 2048, NULL, 5, NULL);
+    // ESP_LOGI("BREAK", "Reached ln 171");
     while (1) {
-        int length = uart_read_bytes(uart_num, rx_buffer, (UART_RX_BUFFER_SIZE - 1U), (UART_READ_TIMEOUT_MS / portTICK_PERIOD_MS));
+        int length = uart_read_bytes(uart_num, rx_buffer, UART_RX_BUFFER_SIZE, UART_READ_TIMEOUT_MS / portTICK_PERIOD_MS);
         if (length > 0) {
             rx_buffer[length] = '\0';
             char command = rx_buffer[0];
@@ -174,11 +192,7 @@ void app_main(void)
             ESP_LOGE("UART", "Read failed with error: %d (esp_err: %s)", length, esp_err_to_name(length)); 
         }
 
-        // send_counter++;
-        // if (send_counter >= STATUS_SEND_COUNTER) {
-        //     send_status();
-        //     send_counter = 0U;
-        // }
+        send_status();
 
         vTaskDelay(TASK_DELAY_MS / portTICK_PERIOD_MS);
     }
