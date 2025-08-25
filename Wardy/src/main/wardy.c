@@ -64,7 +64,7 @@ static void configure_uart(void) {
         .rx_flow_ctrl_thresh = 122U
     };
     ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(uart_num, 4, 5, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(uart_num, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_set_loop_back(uart_num, false)); // enable for loopback testing
 }
 
@@ -171,7 +171,7 @@ void app_main(void)
     const uart_port_t uart_num = UART_NUM_2;
     uint8_t rx_buffer[128];
     // ESP_LOGI("BREAK", "Reached ln 169");
-    // xTaskCreate(alternate_gripper_task, "AlternateGripperTask", 2048, NULL, 5, NULL);
+    xTaskCreate(send_status, "SendStatus", 2048, NULL, 5, NULL);
     // ESP_LOGI("BREAK", "Reached ln 171");
     while (1) {
         int length = uart_read_bytes(uart_num, rx_buffer, UART_RX_BUFFER_SIZE, UART_READ_TIMEOUT_MS / portTICK_PERIOD_MS);
@@ -192,7 +192,6 @@ void app_main(void)
             ESP_LOGE("UART", "Read failed with error: %d (esp_err: %s)", length, esp_err_to_name(length)); 
         }
 
-        send_status();
 
         vTaskDelay(TASK_DELAY_MS / portTICK_PERIOD_MS);
     }
